@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <link rel="stylesheet" href="styles.css" />
+    <title>Document</title>
+</head>
+<body>
+
+    <div class="container">
+        <h2>My Bookmarks</h2>
+
+        <div id="search-container">
+            <form id="searchForm">
+                <button>🔍</button>
+                <input type="text" id="searchInput" placeholder="Search Google..." />
+            </form>
+        </div>
+        
+        <div id="bookmark-container"></div>
+
+        <!-- Add/Edit Modal Popup -->
+        <div id="popup" class="hidden">
+            <div class="popup-content">
+                <h3>Add Bookmark</h3>
+                <input type="text" id="nameInput" placeholder="Name" />
+                <input type="url" id="urlInput" placeholder="https://example.com" />
+                <div class="popup-buttons">
+                    <button id="cancelBtn">Cancel</button>
+                    <button id="saveBtn">Save</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Remove Confirmation Modal Popup -->
+        <div id="confirmPopup" class="hidden">
+            <div class="popup-content">
+                <h3>Remove Bookmark?</h3>
+                <div class="popup-buttons">
+                    <button id="confirmCancel">Cancel</button>
+                    <button id="confirmRemove">Remove</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="config.js"></script>
+    <script src="script.js"></script>
+</body>
+</html>
