@@ -160,7 +160,11 @@ window.addEventListener('DOMContentLoaded', () => {
             container.appendChild(groupDiv);
 
             Sortable.create(list, {
-                group: 'shared-bookmarks',
+                group: {
+                    name: 'shared-bookmarks',
+                    pull: true,
+                    put: true
+                },
                 animation: 150,
                 draggable: '.bookmark',
                 onEnd: async (evt) => {
@@ -169,10 +173,11 @@ window.addEventListener('DOMContentLoaded', () => {
                         const id = items[i].dataset.id;
                         const groupId = evt.to.dataset.groupId;
                         if (!id || !groupId) continue;
+                        console.log(`Updating bookmark ${id} to rank ${i} in group ${groupId}`);
                         await supabase.from('bookmark').update({
-                            rank: i,
+                            rank: i + 1,
                             group_id: groupId
-                            }).eq('id', id);
+                        }).eq('id', id);
                     }
                     await fetchData();
                 }
