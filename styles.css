@@ -75,6 +75,11 @@ h2 {
     transform: scale(1.05);
 }
 
+.bookmark.dragging {
+    opacity: 0.5;
+    transform: scale(0.95);
+}
+
 .icon {
     width: 48px;
     height: 48px;
