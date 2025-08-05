@@ -6,52 +6,45 @@ body {
     background-repeat: repeat;
     background-size: cover;
     overflow-y: auto;
+    color: white;
 }
 
 .container {
     width: 100%;
-    margin: 100px 0;
+    padding: 40px 8vw;
     box-sizing: border-box;
 }
 
 h2 {
     margin-top: 0;
-    margin-bottom: 40px;
-    color: white;
+    margin-bottom: 30px;
     text-align: center;
-}
-
-#bookmark-container {
-    display: grid;
-    margin: 0 8vw;
-    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
-    gap: 20px;
 }
 
 #search-container {
     display: flex;
     justify-content: center;
-    margin: 0 8vw 40px 8vw;
+    margin-bottom: 30px;
 }
 
 #searchForm {
     display: flex;
     width: 100%;
     max-width: 500px;
-    opacity: 0.8;
+    opacity: 0.9;
 }
 
 #searchForm button {
-    padding: 10px 20px;
+    padding: 10px 0 10px 10px;
     background-color: #ffffff;
-    color: white;
+    color: black;
     border: none;
     border-radius: 20px 0 0 20px;
     cursor: pointer;
     font-size: 16px;
 }
 
-#searchInput {
+#searchForm input {
     flex: 1;
     padding: 10px;
     border: none;
@@ -59,25 +52,53 @@ h2 {
     font-size: 16px;
 }
 
+#searchForm input:focus,
+#searchForm button:focus {
+    outline: none;
+    box-shadow: none;
+    border: none;
+    box-shadow: 0 0 0 2px rgba(26, 188, 156, 0.3);
+    z-index: 1;
+}
+
+.group {
+    margin-bottom: 50px;
+}
+
+.group-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 20px;
+    color: white;
+    position: relative;
+}
+
+.group-menu-wrapper {
+    position: relative;
+}
+
+.bookmark-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+    gap: 20px;
+}
+
 .bookmark {
     background: white;
-    opacity: 0.8;
+    opacity: 0.9;
     border-radius: 10px;
     padding: 10px;
     height: 74px;
     position: relative;
     text-align: center;
-    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
     transition: transform 0.2s;
+    color: black;
 }
 
 .bookmark:hover {
     transform: scale(1.05);
-}
-
-.bookmark.dragging {
-    opacity: 0.5;
-    transform: scale(0.95);
 }
 
 .icon {
@@ -88,7 +109,7 @@ h2 {
     justify-content: center;
     font-weight: bold;
     font-size: 20px;
-    margin: 0 auto 10px;
+    margin: 0 auto 5px;
     overflow: hidden;
 }
 
@@ -106,15 +127,16 @@ a {
 }
 
 .add-button {
-    background-color: rgba(255, 255, 255, 0.3);
+    background-color: rgba(255, 255, 255, 0.2);
     border: 2px dashed white;
     border-radius: 10px;
     color: white;
-    font-size: 48px;
+    font-size: 36px;
     font-weight: bold;
     text-align: center;
     cursor: pointer;
-    transition: transform 0.2s;
+    opacity: 0.6;
+    transition: opacity 0.2s, transform 0.2s;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -122,15 +144,20 @@ a {
 }
 
 .add-button:hover {
+    opacity: 1;
     transform: scale(1.05);
 }
 
 /* Modal styles */
-#popup.hidden, #confirmPopup.hidden {
+#popup.hidden,
+#confirmPopup.hidden,
+#groupPopup.hidden {
     display: none;
 }
 
-#popup, #confirmPopup {
+#popup,
+#confirmPopup,
+#groupPopup {
     position: fixed;
     top: 0;
     left: 0;
@@ -140,6 +167,7 @@ a {
     display: flex;
     align-items: center;
     justify-content: center;
+    z-index: 999;
 }
 
 .popup-content {
@@ -148,6 +176,7 @@ a {
     border-radius: 10px;
     width: 300px;
     text-align: center;
+    color: black;
 }
 
 .popup-content h3 {
@@ -206,7 +235,7 @@ a {
     background: white;
     border: 1px solid #ccc;
     border-radius: 6px;
-    box-shadow: 0 0 6px rgba(0,0,0,0.1);
+    box-shadow: 0 0 6px rgba(0, 0, 0, 0.1);
     display: block;
     flex-direction: column;
     z-index: 3;
@@ -227,6 +256,109 @@ a {
     background: #f0f0f0;
 }
 
+.group-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 20px;
+    color: white;
+    position: relative;
+}
+
+.group-name {
+    flex-grow: 0;
+}
+
+.group-menu {
+    font-size: 18px;
+    cursor: pointer;
+    visibility: hidden;
+}
+
+.group-title:hover .group-menu {
+    visibility: visible;
+}
+
+.group-menu-options {
+    position: absolute;
+    top: 100%;
+    right: 0;
+    background: white;
+    color: black;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    box-shadow: 0 0 6px rgba(0,0,0,0.1);
+    display: flex;
+    flex-direction: column;
+    z-index: 3;
+}
+
+.group-menu-options button {
+    padding: 6px 12px;
+    background: none;
+    border: none;
+    text-align: left;
+    cursor: pointer;
+    font-size: 14px;
+    width: 100%;
+}
+
+.group-menu-options button:hover {
+    background: #f0f0f0;
+}
+
+
+/* Add group button */
+#addGroupContainer {
+    display: flex;
+    justify-content: center;
+    margin-top: 20px;
+}
+
+#addGroupBtn {
+    background-color: rgba(255, 255, 255, 0.15);
+    border: 2px dashed white;
+    color: white;
+    font-size: 16px;
+    padding: 10px 20px;
+    border-radius: 8px;
+    cursor: pointer;
+    opacity: 0;
+    transition: opacity 0.2s ease;
+}
+
+#addGroupContainer:hover #addGroupBtn {
+    opacity: 0.6;
+}
+
 .hidden {
     display: none;
+}
+
+/* Action Buttons (Reusable) */
+button.save-btn {
+    background-color: #1abc9c;
+    color: white;
+}
+
+button.save-btn:hover {
+    background-color: #16a085;
+}
+
+button.delete-btn {
+    background-color: #e74c3c;
+    color: white;
+}
+
+button.delete-btn:hover {
+    background-color: #c0392b;
+}
+
+button.cancel-btn {
+    background-color: #f0f0f0;
+    color: black;
+}
+
+button.cancel-btn:hover {
+    background-color: #e0e0e0;
 }
