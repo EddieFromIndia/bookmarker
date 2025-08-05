@@ -167,19 +167,43 @@ window.addEventListener('DOMContentLoaded', () => {
                 },
                 animation: 150,
                 draggable: '.bookmark',
+                filter: '.add-button',
+                preventOnFilter: false,
+
+                onStart: () => {
+                    // Remove all add-buttons across all groups during drag
+                    document.querySelectorAll('.add-button').forEach(btn => btn.remove());
+                },
+
                 onEnd: async (evt) => {
-                    const items = [...evt.to.querySelectorAll('.bookmark')];
+                    const list = evt.to;
+                    const groupId = list.dataset.groupId;
+
+                    // Re-rank all bookmarks in the new list
+                    const items = [...list.querySelectorAll('.bookmark:not(.add-button)')];
                     for (let i = 0; i < items.length; i++) {
                         const id = items[i].dataset.id;
-                        const groupId = evt.to.dataset.groupId;
                         if (!id || !groupId) continue;
-                        console.log(`Updating bookmark ${id} to rank ${i} in group ${groupId}`);
+
                         await supabase.from('bookmark').update({
                             rank: i + 1,
                             group_id: groupId
                         }).eq('id', id);
                     }
-                    await fetchData();
+
+                    // Re-add all add buttons after drop
+                    document.querySelectorAll('.bookmark-list').forEach(groupList => {
+                        const addBtn = document.createElement('div');
+                        addBtn.className = 'add-button';
+                        addBtn.textContent = '+';
+                        addBtn.onclick = () => {
+                            document.getElementById('popup').classList.remove('hidden');
+                            document.querySelector('.popup-content h3').textContent = 'Add Bookmark';
+                            editingId = null;
+                            selectedGroupId = groupList.dataset.groupId;
+                        };
+                        groupList.appendChild(addBtn);
+                    });
                 }
             });
         }
