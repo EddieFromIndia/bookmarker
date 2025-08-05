@@ -52,11 +52,13 @@ window.addEventListener('DOMContentLoaded', () => {
             title.className = 'group-title';
             title.innerHTML = `
                 <span class="group-name">${group.name}</span>
-                <span class="group-menu">⋮</span>
-                <div class="group-menu-options hidden">
-                    <button class="rename-group">Rename</button>
-                    <button class="delete-group">Delete</button>
-                </div>
+                <span class="group-menu-wrapper">
+                    <span class="group-menu">⋮</span>
+                    <div class="group-menu-options hidden">
+                        <button class="rename-group">Rename</button>
+                        <button class="delete-group">Delete</button>
+                    </div>
+                </span>
             `;
 
             const groupMenu = title.querySelector('.group-menu');
