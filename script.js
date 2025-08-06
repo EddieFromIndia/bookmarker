@@ -12,6 +12,17 @@ window.addEventListener('DOMContentLoaded', () => {
     let deletingId = null;
     let selectedGroupId = null;
 
+    function showOverlay(message = 'Loading...') {
+        const overlay = document.getElementById('overlay');
+        const messageBox = document.getElementById('overlayMessage');
+        messageBox.textContent = message;
+        overlay.classList.remove('hidden');
+    }
+
+    function hideOverlay() {
+        document.getElementById('overlay').classList.add('hidden');
+    }
+
     async function getFaviconUrl(domain) {
         const duckUrl = `https://icons.duckduckgo.com/ip1/${domain}.ico`;
         const clearbitUrl = `https://logo.clearbit.com/${domain}`;
@@ -26,6 +37,8 @@ window.addEventListener('DOMContentLoaded', () => {
     }
 
     async function fetchData() {
+        showOverlay('Loading...');
+
         const { data: groups, error: groupError } = await supabase
             .from('group')
             .select('*')
@@ -179,6 +192,8 @@ window.addEventListener('DOMContentLoaded', () => {
                     const list = evt.to;
                     const groupId = list.dataset.groupId;
 
+                    showOverlay('Updating...');
+
                     // Re-rank all bookmarks in the new list
                     const items = [...list.querySelectorAll('.bookmark:not(.add-button)')];
                     for (let i = 0; i < items.length; i++) {
@@ -204,9 +219,13 @@ window.addEventListener('DOMContentLoaded', () => {
                         };
                         groupList.appendChild(addBtn);
                     });
+
+                    hideOverlay();
                 }
             });
         }
+
+        hideOverlay();
     }
 
     document.getElementById('saveBtn').addEventListener('click', async () => {
@@ -219,6 +238,8 @@ window.addEventListener('DOMContentLoaded', () => {
         return;
         }
 
+        showOverlay('Saving...');
+
         if (editingId) {
         const { error } = await supabase.from('bookmark').update({ name, url }).eq('id', editingId);
         if (error) return alert('Failed to update');
@@ -228,6 +249,7 @@ window.addEventListener('DOMContentLoaded', () => {
         }
 
         closePopup();
+        hideOverlay();
         await fetchData();
     });
 
@@ -308,6 +330,8 @@ window.addEventListener('DOMContentLoaded', () => {
 
         if (!name) return;
 
+        showOverlay('Saving...');
+
         if (groupId) {
             const { error } = await supabase.from('group').update({ name }).eq('id', groupId);
             if (error) return alert('Failed to rename group');
@@ -318,6 +342,7 @@ window.addEventListener('DOMContentLoaded', () => {
 
         document.getElementById('groupPopup').classList.add('hidden');
         document.getElementById('groupSaveBtn').dataset.id = '';
+        hideOverlay();
         await fetchData();
     });
 
