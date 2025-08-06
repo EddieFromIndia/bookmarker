@@ -62,7 +62,7 @@ h2 {
 }
 
 .group {
-    margin-bottom: 50px;
+    flex: 1;
 }
 
 .group-title {
@@ -136,7 +136,7 @@ a {
     font-weight: bold;
     text-align: center;
     cursor: pointer;
-    opacity: 0.6;
+    opacity: 0.2;
     transition: opacity 0.2s, transform 0.2s;
     display: flex;
     align-items: center;
@@ -145,7 +145,7 @@ a {
 }
 
 .add-button:hover {
-    opacity: 1;
+    opacity: 0.6;
     transform: scale(1.05);
 }
 
@@ -255,9 +255,11 @@ a {
 
 .menu-options button:hover {
     background: #f0f0f0;
+    border-radius: 6px;
 }
 
 .group-title {
+    padding-left: 20px;
     display: flex;
     align-items: center;
     gap: 8px;
@@ -306,8 +308,35 @@ a {
 
 .group-menu-options button:hover {
     background: #f0f0f0;
+    border-radius: 6px;
 }
 
+.drag-handle {
+    position: absolute;
+    left: 0;
+    font-size: 20px;
+    cursor: grab;
+    color: white;
+    opacity: 0;
+    transition: opacity 0.2s ease;
+    user-select: none;
+}
+.group-title:hover .drag-handle {
+    opacity: 0.6;
+}
+
+.drag-handle:hover {
+    opacity: 1;
+}
+
+.group-wrapper {
+    /* display: flex;
+    align-items: flex-start;
+    gap: 10px; */
+    margin-bottom: 25px;
+    padding-left: 30px;
+    position: relative;
+}
 
 /* Add group button */
 #addGroupContainer {
@@ -325,11 +354,12 @@ a {
     border-radius: 8px;
     cursor: pointer;
     opacity: 0.1;
-    transition: opacity 0.2s ease;
+    transition: opacity 0.2s, transform 0.2s;
 }
 
-#addGroupContainer:hover #addGroupBtn {
+#addGroupBtn:hover {
     opacity: 0.6;
+    transform: scale(1.05);
 }
 
 .hidden {
