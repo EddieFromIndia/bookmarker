@@ -27,13 +27,32 @@ window.addEventListener('DOMContentLoaded', () => {
     async function getFaviconUrl(domain) {
         const duckUrl = `https://icons.duckduckgo.com/ip1/${domain}.ico`;
         const clearbitUrl = `https://logo.clearbit.com/${domain}`;
+
+        // First try DuckDuckGo
         return new Promise((resolve) => {
-            const img = new Image();
-            img.onload = () => {
-                resolve(img.naturalHeight < 32 ? clearbitUrl : duckUrl);
+            const duckImg = new Image();
+
+            duckImg.onload = () => {
+                if (duckImg.naturalHeight >= 32) {
+                    resolve(duckUrl);
+                } else {
+                    // Try Clearbit if duck icon is too small
+                    const clearbitImg = new Image();
+                    clearbitImg.onload = () => resolve(clearbitUrl);
+                    clearbitImg.onerror = () => resolve(duckUrl); // fallback if Clearbit fails
+                    clearbitImg.src = clearbitUrl;
+                }
             };
-            img.onerror = () => resolve(clearbitUrl);
-            img.src = duckUrl;
+
+            duckImg.onerror = () => {
+                // If DuckDuckGo fails, try Clearbit directly
+                const clearbitImg = new Image();
+                clearbitImg.onload = () => resolve(clearbitUrl);
+                clearbitImg.onerror = () => resolve(duckUrl); // fallback again to DuckDuckGo
+                clearbitImg.src = clearbitUrl;
+            };
+
+            duckImg.src = duckUrl;
         });
     }
 
