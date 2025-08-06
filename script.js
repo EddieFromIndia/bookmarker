@@ -275,11 +275,25 @@ window.addEventListener('DOMContentLoaded', () => {
         showOverlay('Saving...');
 
         if (editingId) {
-        const { error } = await supabase.from('bookmark').update({ name, url }).eq('id', editingId);
-        if (error) return alert('Failed to update');
+            const { error } = await supabase.from('bookmark').update({ name, url }).eq('id', editingId);
+            if (error) return alert('Failed to update');
         } else {
-        const { error } = await supabase.from('bookmark').insert([{ name, url, group_id: selectedGroupId }]);
-        if (error) return alert('Failed to save');
+            const { data: groups, error: fetchError } = await supabase
+                .from('bookmark')
+                .select('rank')
+                .order('rank', { ascending: false })
+                .limit(1);
+
+            if (fetchError) {
+                console.error(fetchError);
+                return alert('Failed to fetch current rank');
+            }
+
+            const maxRank = groups?.[0]?.rank ?? 0;
+            const newRank = maxRank + 1;
+
+            const { error } = await supabase.from('bookmark').insert([{ name, url, group_id: selectedGroupId, rank: newRank }]);
+            if (error) return alert('Failed to save');
         }
 
         closePopup();
@@ -350,6 +364,7 @@ window.addEventListener('DOMContentLoaded', () => {
 
     document.getElementById('addGroupBtn').addEventListener('click', () => {
         document.getElementById('groupPopup').classList.remove('hidden');
+        document.querySelector('#groupPopup .popup-content h3').textContent = 'Add Group';
         document.getElementById('groupNameInput').value = '';
     });
 
@@ -370,7 +385,21 @@ window.addEventListener('DOMContentLoaded', () => {
             const { error } = await supabase.from('group').update({ name }).eq('id', groupId);
             if (error) return alert('Failed to rename group');
         } else {
-            const { error } = await supabase.from('group').insert({ name });
+            const { data: groups, error: fetchError } = await supabase
+                .from('group')
+                .select('rank')
+                .order('rank', { ascending: false })
+                .limit(1);
+
+            if (fetchError) {
+                console.error(fetchError);
+                return alert('Failed to fetch current rank');
+            }
+
+            const maxRank = groups?.[0]?.rank ?? 0;
+            const newRank = maxRank + 1;
+            
+            const { error } = await supabase.from('group').insert({ name, rank: newRank });
             if (error) return alert('Failed to add group');
         }
 
