@@ -324,7 +324,7 @@ a {
     padding: 10px 20px;
     border-radius: 8px;
     cursor: pointer;
-    opacity: 0;
+    opacity: 0.1;
     transition: opacity 0.2s ease;
 }
 
