@@ -24,15 +24,34 @@ window.addEventListener('DOMContentLoaded', () => {
         document.getElementById('overlay').classList.add('hidden');
     }
 
-    async function getFaviconUrl(domain) {
+    async function getFaviconUrl(domain, name = '') {
         const duckUrl = `https://icons.duckduckgo.com/ip1/${domain}.ico`;
         const clearbitUrl = `https://logo.clearbit.com/${domain}`;
+        const fallbackChar = name?.charAt(0)?.toUpperCase() || '?';
+
+        // First try DuckDuckGo
         return new Promise((resolve) => {
             const img = new Image();
+
             img.onload = () => {
-                resolve(img.naturalHeight < 32 ? clearbitUrl : duckUrl);
+                if (img.naturalHeight >= 32) {
+                    resolve(duckUrl);
+                } else {
+                    // Try Clearbit if duck icon is too small
+                    const clearbitImg = new Image();
+                    clearbitImg.onload = () => resolve(clearbitUrl);
+                    clearbitImg.onerror = () => resolve(duckUrl);
+                    clearbitImg.src = clearbitUrl;
+                }
             };
-            img.onerror = () => resolve(clearbitUrl);
+
+            img.onerror = () => {
+                // If DuckDuckGo fails, try Clearbit directly
+                const clearbitImg = new Image();
+                clearbitImg.onload = () => resolve(clearbitUrl);
+                clearbitImg.onerror = () => resolve(`text:${fallbackChar}`);
+                clearbitImg.src = clearbitUrl;
+            };
             img.src = duckUrl;
         });
     }
@@ -115,7 +134,15 @@ window.addEventListener('DOMContentLoaded', () => {
                 div.dataset.id = item.id;
 
                 const domain = new URL(item.url).hostname;
-                const iconUrl = await getFaviconUrl(domain);
+                const name = item.name;
+                const iconUrl = await getFaviconUrl(domain, name);
+
+                let icon;
+                if (iconUrl.startsWith('text:')) {
+                    icon = `<span>${iconUrl.slice(5)}</span>`;
+                } else {
+                    icon = `<img src="${iconUrl}" alt="${item.name}" />`;
+                }
 
                 div.innerHTML = `
                     <div class="menu">⋮</div>
@@ -125,9 +152,11 @@ window.addEventListener('DOMContentLoaded', () => {
                     </div>
                     <a href="${item.url}" target="_blank">
                         <div class="icon">
-                        <img src="${iconUrl}" alt="${item.name}" />
+                            ${icon}
                         </div>
-                        ${item.name}
+                        <div class="bookmark-text-wrapper">
+                            <span class="bookmark-title">${item.name}</span>
+                        </div>
                     </a>
                 `;
 
@@ -164,8 +193,14 @@ window.addEventListener('DOMContentLoaded', () => {
             addBtn.onclick = () => {
                 document.getElementById('popup').classList.remove('hidden');
                 document.querySelector('.popup-content h3').textContent = 'Add Bookmark';
+                document.getElementById('nameInput').value = '';
+                document.getElementById('urlInput').value = '';
                 editingId = null;
                 selectedGroupId = group.id;
+
+                setTimeout(() => {
+                    document.getElementById('nameInput').focus();
+                }, 0);
             };
 
             list.appendChild(addBtn);
@@ -275,11 +310,25 @@ window.addEventListener('DOMContentLoaded', () => {
         showOverlay('Saving...');
 
         if (editingId) {
-        const { error } = await supabase.from('bookmark').update({ name, url }).eq('id', editingId);
-        if (error) return alert('Failed to update');
+            const { error } = await supabase.from('bookmark').update({ name, url }).eq('id', editingId);
+            if (error) return alert('Failed to update');
         } else {
-        const { error } = await supabase.from('bookmark').insert([{ name, url, group_id: selectedGroupId }]);
-        if (error) return alert('Failed to save');
+            const { data: groups, error: fetchError } = await supabase
+                .from('bookmark')
+                .select('rank')
+                .order('rank', { ascending: false })
+                .limit(1);
+
+            if (fetchError) {
+                console.error(fetchError);
+                return alert('Failed to fetch current rank');
+            }
+
+            const maxRank = groups?.[0]?.rank ?? 0;
+            const newRank = maxRank + 1;
+
+            const { error } = await supabase.from('bookmark').insert([{ name, url, group_id: selectedGroupId, rank: newRank }]);
+            if (error) return alert('Failed to save');
         }
 
         closePopup();
@@ -350,7 +399,12 @@ window.addEventListener('DOMContentLoaded', () => {
 
     document.getElementById('addGroupBtn').addEventListener('click', () => {
         document.getElementById('groupPopup').classList.remove('hidden');
+        document.querySelector('#groupPopup .popup-content h3').textContent = 'Add Group';
         document.getElementById('groupNameInput').value = '';
+
+        setTimeout(() => {
+            document.getElementById('groupNameInput').focus();
+        }, 0);
     });
 
     document.getElementById('groupCancelBtn').addEventListener('click', () => {
@@ -370,7 +424,21 @@ window.addEventListener('DOMContentLoaded', () => {
             const { error } = await supabase.from('group').update({ name }).eq('id', groupId);
             if (error) return alert('Failed to rename group');
         } else {
-            const { error } = await supabase.from('group').insert({ name });
+            const { data: groups, error: fetchError } = await supabase
+                .from('group')
+                .select('rank')
+                .order('rank', { ascending: false })
+                .limit(1);
+
+            if (fetchError) {
+                console.error(fetchError);
+                return alert('Failed to fetch current rank');
+            }
+
+            const maxRank = groups?.[0]?.rank ?? 0;
+            const newRank = maxRank + 1;
+            
+            const { error } = await supabase.from('group').insert({ name, rank: newRank });
             if (error) return alert('Failed to add group');
         }
 
@@ -378,6 +446,35 @@ window.addEventListener('DOMContentLoaded', () => {
         document.getElementById('groupSaveBtn').dataset.id = '';
         hideOverlay();
         await fetchData();
+    });
+
+    document.addEventListener('keydown', (e) => {
+        const popupOpen = !document.getElementById('popup').classList.contains('hidden');
+        const groupPopupOpen = !document.getElementById('groupPopup').classList.contains('hidden');
+        const confirmOpen = !document.getElementById('confirmPopup').classList.contains('hidden');
+
+        if (popupOpen || groupPopupOpen || confirmOpen) {
+            if (e.key === 'Escape') {
+                e.preventDefault();
+                if (popupOpen) closePopup();
+                if (groupPopupOpen) {
+                    document.getElementById('groupPopup').classList.add('hidden');
+                    document.getElementById('groupSaveBtn').dataset.id = '';
+                }
+                if (confirmOpen) {
+                    document.getElementById('confirmPopup').classList.add('hidden');
+                    document.getElementById('confirmPopup').dataset.type = '';
+                    deletingId = null;
+                }
+            }
+
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                if (popupOpen) document.getElementById('saveBtn').click();
+                if (groupPopupOpen) document.getElementById('groupSaveBtn').click();
+                if (confirmOpen) document.getElementById('confirmRemove').click();
+            }
+        }
     });
 
     fetchData();
