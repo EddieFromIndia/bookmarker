@@ -11,6 +11,7 @@ window.addEventListener('DOMContentLoaded', () => {
     let editingId = null;
     let deletingId = null;
     let selectedGroupId = null;
+    let bookmarkSortables = [];
 
     function showOverlay(message = 'Loading...') {
         const overlay = document.getElementById('overlay');
@@ -42,7 +43,7 @@ window.addEventListener('DOMContentLoaded', () => {
         const { data: groups, error: groupError } = await supabase
             .from('group')
             .select('*')
-            .order('created_at');
+            .order('rank');
 
         const { data: bookmarks, error: bookmarkError } = await supabase
             .from('bookmark')
@@ -64,6 +65,7 @@ window.addEventListener('DOMContentLoaded', () => {
             const title = document.createElement('h3');
             title.className = 'group-title';
             title.innerHTML = `
+                <span class="drag-handle">⋮⋮</span>
                 <span class="group-name">${group.name}</span>
                 <span class="group-menu-wrapper">
                     <span class="group-menu">⋮</span>
@@ -170,9 +172,13 @@ window.addEventListener('DOMContentLoaded', () => {
 
             groupDiv.appendChild(title);
             groupDiv.appendChild(list);
-            container.appendChild(groupDiv);
 
-            Sortable.create(list, {
+            const groupWrapper = document.createElement('div');
+            groupWrapper.className = 'group-wrapper';
+            groupWrapper.appendChild(groupDiv);
+            container.appendChild(groupWrapper);
+
+            const bookmarkSortable = Sortable.create(list, {
                 group: {
                     name: 'shared-bookmarks',
                     pull: true,
@@ -219,6 +225,34 @@ window.addEventListener('DOMContentLoaded', () => {
                         };
                         groupList.appendChild(addBtn);
                     });
+
+                    hideOverlay();
+                }
+            });
+
+            bookmarkSortables.push(bookmarkSortable);
+
+            Sortable.create(container, {
+                animation: 150,
+                handle: '.drag-handle',
+                draggable: '.group-wrapper',
+                onStart: () => {
+                    // Disable all inner bookmark Sortables temporarily
+                    bookmarkSortables.forEach(instance => instance.option('disabled', true));
+                },
+                onEnd: async (evt) => {
+                    showOverlay('Updating...');
+
+                    // Re-rank groups
+                    const wrappers = [...container.querySelectorAll('.group-wrapper')];
+                    for (let i = 0; i < wrappers.length; i++) {
+                        const groupId = wrappers[i].querySelector('.bookmark-list')?.dataset.groupId;
+                        if (!groupId) continue;
+                        await supabase.from('group').update({ rank: i + 1 }).eq('id', groupId);
+                    }
+
+                    // Re-enable bookmarks Sortables
+                    bookmarkSortables.forEach(instance => instance.option('disabled', false));
 
                     hideOverlay();
                 }
