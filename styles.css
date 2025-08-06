@@ -69,7 +69,7 @@ h2 {
     display: flex;
     align-items: center;
     gap: 8px;
-    font-size: 20px;
+    font-size: 16px;
     color: white;
     position: relative;
 }
@@ -80,7 +80,7 @@ h2 {
 
 .bookmark-list {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
     gap: 20px;
     min-height: 100px;
 }
@@ -90,7 +90,8 @@ h2 {
     opacity: 0.9;
     border-radius: 10px;
     padding: 10px;
-    height: 74px;
+    width: 90px;
+    height: 66px;
     position: relative;
     text-align: center;
     box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
@@ -103,8 +104,8 @@ h2 {
 }
 
 .icon {
-    width: 48px;
-    height: 48px;
+    width: 32px;
+    height: 32px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -120,11 +121,35 @@ h2 {
     object-fit: cover;
 }
 
-a {
+.bookmark a {
     text-decoration: none;
-    color: #333;
-    font-size: 14px;
-    display: block;
+    color: inherit;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    height: 100%;
+}
+
+.bookmark-text-wrapper {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex: 1;
+    width: 100%;
+}
+
+.bookmark-title {
+    font-size: 12px;
+    text-align: center;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    line-clamp: 2;
+    -webkit-line-clamp: 2;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    word-break: break-word;
+    line-height: 1.2em;
+    max-height: 2.4em;
 }
 
 .add-button {
@@ -141,7 +166,7 @@ a {
     display: flex;
     align-items: center;
     justify-content: center;
-    height: 90px;
+    height: 82px;
 }
 
 .add-button:hover {
@@ -330,10 +355,7 @@ a {
 }
 
 .group-wrapper {
-    /* display: flex;
-    align-items: flex-start;
-    gap: 10px; */
-    margin-bottom: 25px;
+    margin-bottom: 40px;
     padding-left: 30px;
     position: relative;
 }
@@ -349,7 +371,7 @@ a {
     background-color: rgba(255, 255, 255, 0.15);
     border: 2px dashed white;
     color: white;
-    font-size: 16px;
+    font-size: 14px;
     padding: 10px 20px;
     border-radius: 8px;
     cursor: pointer;
