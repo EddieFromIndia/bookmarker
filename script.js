@@ -56,7 +56,7 @@ window.addEventListener('DOMContentLoaded', () => {
                     <span class="group-menu">⋮</span>
                     <div class="group-menu-options hidden">
                         <button class="rename-group">Rename</button>
-                        <button class="delete-group">Delete</button>
+                        <button class="delete-group">Remove</button>
                     </div>
                 </span>
             `;
@@ -85,7 +85,7 @@ window.addEventListener('DOMContentLoaded', () => {
                 document.getElementById('confirmPopup').dataset.type = 'group';
 
                 // Set custom title
-                document.querySelector('#confirmPopup .popup-content h3').textContent = 'Delete Group and its Bookmarks?';
+                document.querySelector('#confirmPopup .popup-content h3').textContent = 'Remove Group and its Bookmarks?';
                 groupMenuOptions.classList.add('hidden');
             });
 
