@@ -116,9 +116,13 @@ h2 {
 }
 
 .icon img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
+    display: block;
+    max-width: 100%;
+    max-height: 100%;
+    width: auto;
+    height: auto;
+    object-fit: contain;
+    image-rendering: auto;
 }
 
 .bookmark a {
@@ -238,6 +242,38 @@ h2 {
 #saveBtn {
     background-color: #1abc9c;
     color: white;
+}
+
+.icon-options {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+    margin-bottom: 15px;
+}
+
+.icon-options div {
+    width: 32px;
+    height: 32px;
+    border: 2px solid transparent;
+    border-radius: 6px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.icon-options div.selected {
+    border-color: #1abc9c;
+}
+
+.icon-options img {
+    display: block;
+    max-width: 100%;
+    max-height: 100%;
+    width: auto;
+    height: auto;
+    object-fit: contain;
+    image-rendering: auto;
 }
 
 .menu {

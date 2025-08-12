@@ -1,17 +1,24 @@
 window.addEventListener('DOMContentLoaded', () => {
-    const supabaseUrl = window.appConfig.url;
-    const supabaseKey = window.appConfig.key;
-
-    const supabase = window.supabase.createClient(supabaseUrl, supabaseKey, {
-        db: {
-        schema: 'eddie'
-        }
-    });
-
+    let supabase;
+    let lookupMap = {};
     let editingId = null;
     let deletingId = null;
     let selectedGroupId = null;
     let bookmarkSortables = [];
+
+    async function init() {
+        const res = await fetch('/config');
+        const appConfig = await res.json();
+
+        const supabaseUrl = appConfig.url;
+        const supabaseKey = appConfig.key;
+
+        supabase = window.supabase.createClient(supabaseUrl, supabaseKey, {
+            db: { schema: 'eddie' }
+        });
+
+        fetchData();
+    }
 
     function showOverlay(message = 'Loading...') {
         const overlay = document.getElementById('overlay');
@@ -24,46 +31,172 @@ window.addEventListener('DOMContentLoaded', () => {
         document.getElementById('overlay').classList.add('hidden');
     }
 
-    async function getFaviconUrl(domain, name = '') {
+    function findLookupIcon(url) {
+        try {
+            const u = new URL(url);
+            const host = u.hostname.toLowerCase();
+            const path = u.pathname.replace(/\/+$/, ''); // remove trailing slash
+            const segments = path.split('/').filter(Boolean).map(s => decodeURIComponent(s).toLowerCase());
+
+            // Generate candidates in priority order
+            const candidates = [];
+
+            // 1. Full host + longest path segments
+            for (let i = segments.length; i >= 1; i--) {
+                candidates.push(`${host}/${segments.slice(0, i).join('/')}`);
+            }
+            // 2. Host only
+            candidates.push(host);
+
+            // 3. Parent domain matches + path segments
+            const hostParts = host.split('.');
+            if (hostParts.length > 2) {
+                const parentDomain = hostParts.slice(-2).join('.');
+                for (let i = segments.length; i >= 1; i--) {
+                    candidates.push(`${parentDomain}/${segments.slice(0, i).join('/')}`);
+                }
+                candidates.push(parentDomain);
+            }
+
+            // Find first match in lookupMap
+            for (const key of candidates) {
+                if (lookupMap[key]) return lookupMap[key];
+            }
+        } catch (e) {
+            console.warn("Invalid URL for lookup:", url);
+        }
+        return null;
+    }
+
+    function attachOptionEvents(option, icon, idx, preselectedIcon, container) {
+        option.addEventListener('click', () => {
+            document.querySelectorAll('#iconOptions div').forEach(d => d.classList.remove('selected'));
+            option.classList.add('selected');
+            container.dataset.selectedIcon = icon;
+        });
+
+        // Selection logic
+        if ((preselectedIcon && preselectedIcon === icon) || (!preselectedIcon && idx === 0)) {
+            option.classList.add('selected');
+            container.dataset.selectedIcon = icon;
+        }
+    }
+
+    async function urlToBase64(url) {
+        try {
+            const res = await fetch(url);
+            const blob = await res.blob();
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onloadend = () => resolve(reader.result); // result is data URI
+                reader.onerror = reject;
+                reader.readAsDataURL(blob);
+            });
+        } catch (e) {
+            console.error("Failed to convert URL to Base64:", e);
+            return url; // fallback to original URL
+        }
+    }
+
+    async function loadIconOptions(name, url, preselectedIcon = null) {
+        if (!url) {
+            document.getElementById('iconSelection').classList.add('hidden');
+            return;
+        }
+
+        let lookupIcon = null;
+        try {
+            lookupIcon = findLookupIcon(url);
+        } catch (e) {
+            console.warn("Invalid URL for icon lookup:", url);
+        }
+
+        const domain = (() => { try { return new URL(url).hostname; } catch { return ''; } })();
+        const fallbackChar = name?.charAt(0)?.toUpperCase() || '?';
         const duckUrl = `https://icons.duckduckgo.com/ip1/${domain}.ico`;
         const clearbitUrl = `https://logo.clearbit.com/${domain}`;
-        const fallbackChar = name?.charAt(0)?.toUpperCase() || '?';
 
-        // First try DuckDuckGo
-        return new Promise((resolve) => {
-            const img = new Image();
+        // Build icon list with lookup first if available
+        let icons = [];
+        if (lookupIcon) icons.push(lookupIcon);
+        icons.push(duckUrl, clearbitUrl, `text:${fallbackChar}`);
+        icons = [...new Set(icons)]; // remove duplicates
 
-            img.onload = () => {
-                if (img.naturalHeight >= 32) {
-                    resolve(duckUrl);
-                } else {
-                    // Try Clearbit if duck icon is too small
-                    const clearbitImg = new Image();
-                    clearbitImg.onload = () => resolve(clearbitUrl);
-                    clearbitImg.onerror = () => resolve(duckUrl);
-                    clearbitImg.src = clearbitUrl;
-                }
-            };
+        const container = document.getElementById('iconOptions');
+        container.innerHTML = '';
+        container.dataset.selectedIcon = preselectedIcon || '';
 
-            img.onerror = () => {
-                // If DuckDuckGo fails, try Clearbit directly
-                const clearbitImg = new Image();
-                clearbitImg.onload = () => resolve(clearbitUrl);
-                clearbitImg.onerror = () => resolve(`text:${fallbackChar}`);
-                clearbitImg.src = clearbitUrl;
-            };
-            img.src = duckUrl;
+        const validIcons = [];
+
+        for (const icon of icons) {
+            if (icon.startsWith('text:')) {
+                validIcons.push({ type: 'text', src: icon });
+            } else {
+                const isValid = await new Promise(resolve => {
+                    const img = new Image();
+                    img.onload = () => resolve(true);
+                    img.onerror = () => resolve(false);
+                    img.src = icon;
+                });
+                if (isValid) validIcons.push({ type: 'img', src: icon });
+            }
+        }
+
+        validIcons.forEach((iconObj, idx) => {
+            const option = document.createElement('div');
+
+            if (iconObj.type === 'text') {
+                option.textContent = iconObj.src.slice(5);
+                option.style.fontWeight = 'bold';
+            } else {
+                const img = document.createElement('img');
+                img.src = iconObj.src;
+                option.appendChild(img);
+            }
+
+            option.addEventListener('click', () => {
+                document.querySelectorAll('#iconOptions div').forEach(d => d.classList.remove('selected'));
+                option.classList.add('selected');
+                container.dataset.selectedIcon = iconObj.src;
+            });
+
+            if ((preselectedIcon && preselectedIcon === iconObj.src) || (!preselectedIcon && idx === 0)) {
+                option.classList.add('selected');
+                container.dataset.selectedIcon = iconObj.src;
+            }
+
+            container.appendChild(option);
         });
+
+        document.getElementById('iconSelection').classList.remove('hidden');
     }
 
     async function fetchData() {
         showOverlay('Loading...');
 
+        // Fetch lookup table once
+        const { data: lookupRows, error: lookupError } = await supabase
+            .from('icon_lookup')
+            .select('website, icon');
+
+        if (lookupError) {
+            console.error("Failed to fetch icon_lookup:", lookupError);
+        }
+
+        lookupMap = {};
+        if (lookupRows) {
+            for (const row of lookupRows) {
+                // normalize: remove trailing slash(es) and lowercase
+                const key = String(row.website || '').replace(/\/+$/, '').toLowerCase();
+                if (key) lookupMap[key] = row.icon;
+            }
+        }
+
+        // Fetch groups and bookmarks
         const { data: groups, error: groupError } = await supabase
             .from('group')
             .select('*')
             .order('rank');
-
         const { data: bookmarks, error: bookmarkError } = await supabase
             .from('bookmark')
             .select('*')
@@ -97,10 +230,8 @@ window.addEventListener('DOMContentLoaded', () => {
 
             const groupMenu = title.querySelector('.group-menu');
             const groupMenuOptions = title.querySelector('.group-menu-options');
-
             groupMenu.addEventListener('click', (e) => {
                 e.stopPropagation();
-                // Close all bookmark and group menus
                 document.querySelectorAll('.menu-options').forEach(m => m.classList.add('hidden'));
                 document.querySelectorAll('.group-menu-options').forEach(g => g.classList.add('hidden'));
                 groupMenuOptions.classList.toggle('hidden');
@@ -117,8 +248,6 @@ window.addEventListener('DOMContentLoaded', () => {
                 deletingId = group.id;
                 document.getElementById('confirmPopup').classList.remove('hidden');
                 document.getElementById('confirmPopup').dataset.type = 'group';
-
-                // Set custom title
                 document.querySelector('#confirmPopup .popup-content h3').textContent = 'Remove Group and its Bookmarks?';
                 groupMenuOptions.classList.add('hidden');
             });
@@ -133,15 +262,17 @@ window.addEventListener('DOMContentLoaded', () => {
                 div.className = 'bookmark';
                 div.dataset.id = item.id;
 
-                const domain = new URL(item.url).hostname;
-                const name = item.name;
-                const iconUrl = await getFaviconUrl(domain, name);
-
                 let icon;
-                if (iconUrl.startsWith('text:')) {
-                    icon = `<span>${iconUrl.slice(5)}</span>`;
+                const matchIcon = findLookupIcon(item.url);
+
+                if (item.icon?.startsWith('text:')) {
+                    icon = `<span style="font-weight:bold;">${item.icon.slice(5)}</span>`;
+                } else if (item.icon) {
+                    icon = `<img src="${item.icon}" alt="${item.name}" />`;
+                } else if (matchIcon) {
+                    icon = `<img src="${matchIcon}" alt="${item.name}" />`; // works with base64
                 } else {
-                    icon = `<img src="${iconUrl}" alt="${item.name}" />`;
+                    icon = `<span style="font-weight:bold;">${item.name.charAt(0).toUpperCase()}</span>`;
                 }
 
                 div.innerHTML = `
@@ -162,7 +293,6 @@ window.addEventListener('DOMContentLoaded', () => {
 
                 div.querySelector('.menu').addEventListener('click', (e) => {
                     e.stopPropagation();
-                    // Close all bookmark and group menus
                     document.querySelectorAll('.menu-options').forEach(m => m.classList.add('hidden'));
                     document.querySelectorAll('.group-menu-options').forEach(g => g.classList.add('hidden'));
                     div.querySelector('.menu-options').classList.toggle('hidden');
@@ -173,8 +303,10 @@ window.addEventListener('DOMContentLoaded', () => {
                     document.querySelector('.popup-content h3').textContent = 'Edit Bookmark';
                     document.getElementById('nameInput').value = item.name;
                     document.getElementById('urlInput').value = item.url;
+                    document.getElementById('iconOptions').dataset.selectedIcon = item.icon || '';
                     editingId = item.id;
                     selectedGroupId = item.group_id;
+                    loadIconOptions(item.name, item.url, item.icon);
                 });
 
                 div.querySelector('.remove-btn').addEventListener('click', () => {
@@ -195,14 +327,12 @@ window.addEventListener('DOMContentLoaded', () => {
                 document.querySelector('.popup-content h3').textContent = 'Add Bookmark';
                 document.getElementById('nameInput').value = '';
                 document.getElementById('urlInput').value = '';
+                document.getElementById('iconOptions').dataset.selectedIcon = '';
                 editingId = null;
                 selectedGroupId = group.id;
-
-                setTimeout(() => {
-                    document.getElementById('nameInput').focus();
-                }, 0);
+                loadIconOptions('', '', null);
+                setTimeout(() => document.getElementById('nameInput').focus(), 0);
             };
-
             list.appendChild(addBtn);
 
             groupDiv.appendChild(title);
@@ -214,40 +344,22 @@ window.addEventListener('DOMContentLoaded', () => {
             container.appendChild(groupWrapper);
 
             const bookmarkSortable = Sortable.create(list, {
-                group: {
-                    name: 'shared-bookmarks',
-                    pull: true,
-                    put: true
-                },
+                group: { name: 'shared-bookmarks', pull: true, put: true },
                 animation: 150,
                 draggable: '.bookmark',
                 filter: '.add-button',
                 preventOnFilter: false,
-
-                onStart: () => {
-                    // Remove all add-buttons across all groups during drag
-                    document.querySelectorAll('.add-button').forEach(btn => btn.remove());
-                },
-
+                onStart: () => document.querySelectorAll('.add-button').forEach(btn => btn.remove()),
                 onEnd: async (evt) => {
                     const list = evt.to;
                     const groupId = list.dataset.groupId;
-
                     showOverlay('Updating...');
-
-                    // Re-rank all bookmarks in the new list
                     const items = [...list.querySelectorAll('.bookmark:not(.add-button)')];
                     for (let i = 0; i < items.length; i++) {
                         const id = items[i].dataset.id;
                         if (!id || !groupId) continue;
-
-                        await supabase.from('bookmark').update({
-                            rank: i + 1,
-                            group_id: groupId
-                        }).eq('id', id);
+                        await supabase.from('bookmark').update({ rank: i + 1, group_id: groupId }).eq('id', id);
                     }
-
-                    // Re-add all add buttons after drop
                     document.querySelectorAll('.bookmark-list').forEach(groupList => {
                         const addBtn = document.createElement('div');
                         addBtn.className = 'add-button';
@@ -260,35 +372,25 @@ window.addEventListener('DOMContentLoaded', () => {
                         };
                         groupList.appendChild(addBtn);
                     });
-
                     hideOverlay();
                 }
             });
-
             bookmarkSortables.push(bookmarkSortable);
 
             Sortable.create(container, {
                 animation: 150,
                 handle: '.drag-handle',
                 draggable: '.group-wrapper',
-                onStart: () => {
-                    // Disable all inner bookmark Sortables temporarily
-                    bookmarkSortables.forEach(instance => instance.option('disabled', true));
-                },
-                onEnd: async (evt) => {
+                onStart: () => bookmarkSortables.forEach(instance => instance.option('disabled', true)),
+                onEnd: async () => {
                     showOverlay('Updating...');
-
-                    // Re-rank groups
                     const wrappers = [...container.querySelectorAll('.group-wrapper')];
                     for (let i = 0; i < wrappers.length; i++) {
                         const groupId = wrappers[i].querySelector('.bookmark-list')?.dataset.groupId;
                         if (!groupId) continue;
                         await supabase.from('group').update({ rank: i + 1 }).eq('id', groupId);
                     }
-
-                    // Re-enable bookmarks Sortables
                     bookmarkSortables.forEach(instance => instance.option('disabled', false));
-
                     hideOverlay();
                 }
             });
@@ -309,8 +411,17 @@ window.addEventListener('DOMContentLoaded', () => {
 
         showOverlay('Saving...');
 
+        let icon = document.getElementById('iconOptions').dataset.selectedIcon || null;
+
+        // If the icon is a URL, convert to Base64
+        if (icon && !icon.startsWith('data:') && !icon.startsWith('text:')) {
+            icon = await urlToBase64(icon);
+        }
+
         if (editingId) {
-            const { error } = await supabase.from('bookmark').update({ name, url }).eq('id', editingId);
+            const { error } = await supabase.from('bookmark')
+                .update({ name, url, icon })
+                .eq('id', editingId);
             if (error) return alert('Failed to update');
         } else {
             const { data: groups, error: fetchError } = await supabase
@@ -327,13 +438,27 @@ window.addEventListener('DOMContentLoaded', () => {
             const maxRank = groups?.[0]?.rank ?? 0;
             const newRank = maxRank + 1;
 
-            const { error } = await supabase.from('bookmark').insert([{ name, url, group_id: selectedGroupId, rank: newRank }]);
+            const { error } = await supabase.from('bookmark')
+                .insert([{ name, url, group_id: selectedGroupId, rank: newRank, icon }]);
             if (error) return alert('Failed to save');
         }
 
         closePopup();
         hideOverlay();
         await fetchData();
+    });
+
+    ['blur', 'input'].forEach(evt => {
+        document.getElementById('nameInput').addEventListener(evt, () => {
+            const name = document.getElementById('nameInput').value.trim();
+            const url = document.getElementById('urlInput').value.trim();
+            loadIconOptions(name, url, document.getElementById('iconOptions').dataset.selectedIcon);
+        });
+        document.getElementById('urlInput').addEventListener(evt, () => {
+            const name = document.getElementById('nameInput').value.trim();
+            const url = document.getElementById('urlInput').value.trim();
+            loadIconOptions(name, url, document.getElementById('iconOptions').dataset.selectedIcon);
+        });
     });
 
     document.getElementById('cancelBtn').addEventListener('click', closePopup);
@@ -477,5 +602,5 @@ window.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    fetchData();
+    init();
 });

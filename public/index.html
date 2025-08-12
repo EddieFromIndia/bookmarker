@@ -44,6 +44,12 @@
             <h3>Add Bookmark</h3>
             <input type="text" id="nameInput" placeholder="Name" />
             <input type="url" id="urlInput" placeholder="https://example.com" />
+            <!-- Icon selection -->
+            <div id="iconSelection" class="hidden">
+                <p>Select an icon:</p>
+                <div id="iconOptions" class="icon-options"></div>
+            </div>
+            
             <div class="popup-buttons">
                 <button id="cancelBtn" class="cancel-btn">Cancel</button>
                 <button id="saveBtn" class="save-btn">Save</button>
@@ -66,7 +72,6 @@
         <div class="overlay-message" id="overlayMessage">Loading...</div>
     </div>
 
-    <script src="config.js"></script>
     <script src="script.js"></script>
 </body>
 </html>
